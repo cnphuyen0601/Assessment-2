@@ -1,0 +1,218 @@
+---
+title: "Assignment2"
+author: "Uyen Canh s4566710"
+output: html_document
+---
+  
+  ```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(skimr)
+```
+
+## Load the data
+
+
+```{r}
+df = read.csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-11-20/thanksgiving_meals.csv')
+# create duplicate
+data= df
+
+```
+
+### Part 2: Data Wrangling and visualization 38 marks
+#### 1. Display the first 10 rows of the dataset using `kable()` function (1 marks). 
+
+```{r}
+knitr::kable(head(df,10), "pipe")
+
+```
+#### 2. Using `skim()` display the summary of variables. 
+```{r}
+skim(df)
+
+```
+If we wanted to predict family income, we will use the variables gender, main dish, the age,community type and whether the participant work in retail. These variables should be in factor form but they are in character form. This means that they are in incorrect data type. 
+
+To predict community type or US region, we will use variable such as family income, the gender, the age,hometown_friends, friends giving, and work_retail. These variables are in wrong data type.
+
+#### 3. Use `fct_reorder` and `parse_number` functions to create a factor variable `family_income`(2 mark).
+```{r}
+library(tidyverse)
+df <- df %>%
+  mutate(family_income = recode(family_income, '$0 to $9,999' = 1,
+                                '$10,000 to $24,999' = 2,
+                                '$25,000 to $49,999' = 3,
+                                '$50,000 to $74,999' = 4,
+                                '$75,000 to $99,999' = 5,
+                                '$100,000 to $124,999' = 6,
+                                '$125,000 to $149,999' = 7,
+                                '$150,000 to $174,999' = 8,
+                                '$175,000 to $199,999' = 9,
+                                '$200,000 and up' = 10
+  ))
+```
+
+#### 4. What is the number of people who celebrate? (1 mark)
+
+```{r}
+table(df$celebrate)
+```
+980 people celebrated
+
+#### 5. What are categories and insights for each main dish served and the method it is prepared? (2 marks)
+```{r}
+print(table(df$main_dish))
+
+```
+The main dish categories are chicken, ham/pork, roast beef, tofurkey, turducken and Turkey
+
+### 6. Create 3 different data viz showing insights for main dish served and the method. Provide your own legend and use themes.
+
+```{r}
+ggplot(df, aes(y = main_dish)) +
+  geom_bar(aes(fill = stuffing), position = position_stack(reverse = TRUE)) +
+  theme(legend.position = "top")+labs(title = "Bar chart of Main Dish by Stuffing")
+
+```
+The figure above shows that the preferred main dish was Turkey. On the other hand, the least preferred main dish was Turducken. Also Turkey was preferred with bread-based stuffing
+
+```{r}
+ggplot(df, aes(x = main_dish)) +
+  geom_bar(aes(fill = main_dish), position = position_stack(reverse = TRUE)) +
+  theme(legend.position = "bottom")+labs(title = "Bar chart for Main Dish")
+
+```
+
+The tigure above shows that the main preferred main dish was Turkey followed by ham/pork. While the least preferred main dish was Turducken. 
+
+```{r}
+ggplot(df, aes(y = stuffing)) +
+  geom_bar(aes(fill = stuffing), position = position_stack(reverse = TRUE)) +
+  theme(legend.position = "bottom")+labs(title = "Bar chart for Stuffing")
+
+```
+
+The figure above shows that the main preferred stuffing was bread-based. The least preferred stuffing was rice-based.
+
+#### 7. How many use cranberry sauce? How many use gravy? 2marks
+
+```{r}
+table(df$cranberry)
+table(df$gravy)
+
+```
+Around 828 people use cranberry sause. Around 892 use gravy
+
+###8 What is the distribution of those who celebrate across income ranges. Create a data viz
+
+```{r}
+
+family = data %>%
+  filter(celebrate=='Yes')%>%
+  count(family_income,sort = TRUE)
+family
+family <- family %>% 
+  dplyr::mutate(
+    perc = paste0(sprintf("%4.1f", n / sum(n) * 100), "%"),
+    ## customize label for the first category
+    perc = if_else(row_number() == 1, paste(perc), perc)
+  )
+family
+
+pal <- c(
+  "gray85",
+  rep("gray70", length(family$family_income) - 4), 
+  "coral2", "mediumpurple1", "goldenrod1"
+)
+
+
+#
+family <-
+  family %>% 
+  mutate(
+    color = case_when(
+      row_number() == 1 ~ "goldenrod1",
+      row_number() == 2 ~ "mediumpurple1",
+      row_number() == 3 ~ "coral2",
+      family_income == "NA" ~ "gray85",
+      ## all others should be gray
+      TRUE ~ "gray70"
+    )
+  )
+
+ggplot(family, aes(x = n, y = family_income, fill = color)) +
+  geom_col() +
+  geom_text(
+    aes(label = perc), 
+    hjust = 1, nudge_x = -.5
+  ) +
+  ## add custom colors
+  scale_fill_identity(guide = "none") +
+  theme_minimal()
+
+```
+
+Majority of those who celebrated earned between $ 25,000 to $ 74,999. Around 16.9 % of the total people who celebrated earned between $ 25,000 to $ 74,999. This means that 3 out 50 eanred around $ 25,000 to $ 74,999. 
+
+Minority of those who celebrated earned between $ 175,000 to $ 199,999. This means that around 2.7 % of those who celebrated earned between $ 175,000 to $ 199,999. This also shows that majority of those who earned the highest did not celebrate. 
+
+### 10. Use the following code to create a new data set 2 mark
+```{r}
+library(dplyr)
+new_data=df%>%
+  select(id, starts_with("side"),
+         starts_with("pie"),
+         starts_with("dessert")) %>%
+  select(-side15, -pie13, -dessert12) %>%
+  gather(type, value, -id) %>%
+  filter(!is.na(value),
+         !value %in% c("None", "Other (please specify)")) %>%
+  mutate(type = str_remove(type, "\\d+"))
+
+```
+
+What this code does it that it select the variables that starts with the word 'side', 'pie' and 'dessert'. 
+It drops side15, pie13 and dessert12 variables. It the gather the subsetted data by type and value and filter out missing values, None and Other values. Finally, it removes all values after d
+
+#### 11. Intall package `widyr` and use `pairwise_cor()` function https://www.rdocumentation.org/packages/widyr/versions/0.1.3/topics/pairwise_cor
+
+This function find the correlations of pairs of items in a column based on a feature column linking them together. 
+
+
+### 12. Use this code for the new dataset
+
+
+```{r}
+library(widyr)
+attach(new_data)
+# this code is not working
+#pairwise_cor(value, id, sort = TRUE)
+
+```
+
+### 13. Use `lm()` function to build a model that predict a family income based on data in the dataset. 8 marks
+The predictor variables that will be used in this model will be age, gender, community type,work_retail
+, and celebrate. I have used these variables because, they are some of the factors that determine the income obtained by and individual.
+```{r}
+# conver the variables into factor variables
+subdata = df%>%
+  select(family_income, age, gender, main_dish,work_retail, community_type)
+subdata$age= as.factor(subdata$age)
+subdata$gender=as.factor(subdata$gender)
+subdata$work_retail=as.factor(subdata$work_retail)
+subdata$community_type=as.factor(subdata$community_type)
+
+sum(is.na(subdata))
+subdata=na.omit(subdata)
+model1=lm(family_income~main_dish+gender+age, data = subdata)
+summary(model1)
+model2= lm(family_income~ main_dish+community_type+gender+work_retail, data=subdata)
+summary(model2)
+model3= lm(family_income~., data=subdata)
+summary(model3)
+```
+Model 3 is the best. This is because it produced the highest value of R-squared (14.58 %). Model 1 and 2 produced R-squared value of 12.91 % and 6.15 % respectively.
+                                                                                 
+                                                                                 
+                                                                                 
